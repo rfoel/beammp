@@ -1,0 +1,13 @@
+{
+  "name": "beammp",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "deploy": "sst deploy",
+    "remove": "sst remove"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "sst": "^4"
+  }
+}
