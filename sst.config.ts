@@ -12,7 +12,7 @@ export default $config({
     };
   },
   async run() {
-    const { readFileSync } = await import("node:fs");
+    const { readFileSync, readdirSync, existsSync } = await import("node:fs");
     const serverConfig = readFileSync("ServerConfig.toml", "utf-8");
 
     // Security group — only BeamMP port needed (SSM replaces SSH)
@@ -61,8 +61,20 @@ export default $config({
       role: role.name,
     });
 
-    // S3 bucket for mods — upload .zip files here, then restart the server
+    // S3 bucket for mods — populated automatically from the local ./mods/ directory
     const modsBucket = new sst.aws.Bucket("BeamMPMods");
+
+    // Upload each .zip from the local mods/ folder (gitignored) at deploy time
+    if (existsSync("mods")) {
+      for (const file of readdirSync("mods").filter((f) => f.endsWith(".zip"))) {
+        new aws.s3.BucketObjectv2(`Mod-${file}`, {
+          bucket: modsBucket.name,
+          key: file,
+          source: new $util.asset.FileAsset(`mods/${file}`),
+        });
+      }
+    }
+
     new aws.iam.RolePolicy("BeamMPModsPolicy", {
       role: role.name,
       policy: modsBucket.arn.apply((arn: string) =>
@@ -125,7 +137,7 @@ ${serverConfig}TOML
 
 chown -R beammp:beammp /opt/beammp
 
-# Systemd service — syncs mods from S3 on every start/restart
+# Systemd service — syncs mods (deployed from local ./mods/ folder) on every start/restart
 cat > /etc/systemd/system/beammp.service << 'UNIT'
 [Unit]
 Description=BeamMP Server

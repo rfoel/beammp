@@ -7,7 +7,7 @@ Deploys a [BeamMP](https://beammp.com) multiplayer server for BeamNG.drive on an
 - EC2 t3.micro running Ubuntu 24.04
 - BeamMP server running as a systemd service on port `30814`
 - Elastic IP (stable address that survives stop/start)
-- S3 bucket for mods (synced to the server on every service start)
+- S3 bucket for mods (auto-populated from the local `mods/` folder on every deploy)
 - IAM role with SSM access (no SSH keys needed)
 
 ## Prerequisites
@@ -18,7 +18,13 @@ Deploys a [BeamMP](https://beammp.com) multiplayer server for BeamNG.drive on an
 
 ## Setup
 
-1. Get a BeamMP auth key from [keymaster.beammp.com](https://keymaster.beammp.com) and fill it in `ServerConfig.toml`:
+1. Copy the example config and fill in your BeamMP auth key:
+
+   ```bash
+   cp ServerConfig.example.toml ServerConfig.toml
+   ```
+
+   Get an auth key from [keymaster.beammp.com](https://keymaster.beammp.com) and set it in `ServerConfig.toml`:
 
    ```toml
    AuthKey = "your-key-here"
@@ -57,21 +63,26 @@ nc -zv <ip> 30814
 
 ## Mods
 
-Upload BeamMP mod `.zip` files to the mods bucket and restart the server to apply them:
+Place BeamMP mod `.zip` files in a local `mods/` folder and redeploy — SST uploads them to S3 automatically and the server syncs them on every start.
+
+```
+mods/
+  my-map.zip
+  some-car.zip
+```
 
 ```bash
-# Upload a mod
-aws s3 cp mymod.zip s3://<modsBucket>/
+npx sst deploy
+```
 
-# Remove a mod
-aws s3 rm s3://<modsBucket>/mymod.zip
+The `mods/` folder is gitignored so mod files don't end up in the repo. To remove a mod, delete it from the folder and redeploy. The server always reflects exactly what's in `mods/` after a restart.
 
-# Restart the server to sync and apply
+To apply new mods without a full redeploy, restart the server after deploying:
+
+```bash
 aws ssm start-session --target <instanceId> --region sa-east-1
 sudo systemctl restart beammp
 ```
-
-The server syncs the entire bucket to `Resources/Client` (with `--delete`) before each start, so removing a file from S3 removes it from the server on next restart.
 
 ## Change server settings
 

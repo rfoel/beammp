@@ -145,3 +145,9 @@ vite.config.ts.timestamp-*
 
 # SST
 .sst
+
+# Rename ServerConfig.example.toml to ServerConfig.toml to deploy the server
+ServerConfig.toml
+
+# Local mods — place .zip files here; they are deployed to S3 automatically
+mods/
